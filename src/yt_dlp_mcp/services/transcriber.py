@@ -102,7 +102,7 @@ class AssemblyAITranscriber:
             payload = response.json()
             status = str(payload.get("status") or "").lower()
             if status == "completed":
-                return payload
+                return dict(payload)
             if status == "error":
                 message = payload.get("error") or "AssemblyAI reported error status"
                 raise RuntimeError(str(message))
@@ -135,6 +135,6 @@ class AssemblyAITranscriber:
     @staticmethod
     def _ms_to_seconds(value: object) -> float:
         try:
-            return float(value) / 1000.0 if value is not None else 0.0
+            return float(str(value)) / 1000.0 if value is not None else 0.0
         except (TypeError, ValueError):
             return 0.0

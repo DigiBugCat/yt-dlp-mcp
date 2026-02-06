@@ -115,13 +115,13 @@ class BackgroundWorker:
     @staticmethod
     def _as_float(value: object) -> float | None:
         try:
-            return float(value) if value is not None else None
+            return float(str(value)) if value is not None else None
         except (TypeError, ValueError):
             return None
 
     @staticmethod
     def _as_int(value: object) -> int | None:
         try:
-            return int(value) if value is not None else None
+            return int(str(value)) if value is not None else None
         except (TypeError, ValueError):
             return None
