@@ -23,14 +23,86 @@ def _format_timestamp(seconds: float) -> str:
     return f"{minutes:02d}:{secs:02d}"
 
 
-def to_markdown(result: TranscriptResult, title: str | None = None) -> str:
+def _format_duration(seconds: float | None) -> str | None:
+    if seconds is None:
+        return None
+    whole = int(max(seconds, 0))
+    hours, rem = divmod(whole, 3600)
+    minutes, secs = divmod(rem, 60)
+    if hours > 0:
+        return f"{hours}h {minutes}m {secs}s"
+    if minutes > 0:
+        return f"{minutes}m {secs}s"
+    return f"{secs}s"
+
+
+def to_markdown(
+    result: TranscriptResult,
+    metadata: dict[str, object] | None = None,
+) -> str:
     lines: list[str] = []
+    metadata = metadata or {}
+
+    # Title
+    title = metadata.get("title")
     if title:
         lines.append(f"# {title}")
         lines.append("")
 
+    # Metadata block
+    meta_lines: list[str] = []
+
+    channel = metadata.get("channel") or metadata.get("uploader")
+    if channel:
+        channel_url = metadata.get("channel_url") or metadata.get("uploader_url")
+        if channel_url:
+            meta_lines.append(f"**Channel**: [{channel}]({channel_url})")
+        else:
+            meta_lines.append(f"**Channel**: {channel}")
+
+    upload_date = metadata.get("upload_date")
+    if upload_date and isinstance(upload_date, str) and len(upload_date) == 8:
+        formatted_date = f"{upload_date[:4]}-{upload_date[4:6]}-{upload_date[6:8]}"
+        meta_lines.append(f"**Date**: {formatted_date}")
+
+    duration = metadata.get("duration")
+    if duration is not None:
+        try:
+            duration_str = _format_duration(float(str(duration)))
+            if duration_str:
+                meta_lines.append(f"**Duration**: {duration_str}")
+        except (TypeError, ValueError):
+            pass
+
+    if meta_lines:
+        lines.extend(meta_lines)
+        lines.append("")
+
+    # Thumbnail
+    thumbnail = metadata.get("thumbnail")
+    if thumbnail:
+        lines.append(f"![Thumbnail]({thumbnail})")
+        lines.append("")
+
+    # Description
+    description = metadata.get("description")
+    if description and isinstance(description, str) and description.strip():
+        lines.append("## Description")
+        lines.append("")
+        lines.append(description.strip())
+        lines.append("")
+
+    # Separator before transcript
+    if lines:
+        lines.append("---")
+        lines.append("")
+
+    # Transcript
+    lines.append("## Transcript")
+    lines.append("")
+
     if not result.segments:
-        lines.append(result.text)
+        lines.append(result.text or "")
         return "\n".join(lines).strip() + "\n"
 
     for segment in result.segments:
@@ -92,8 +164,7 @@ class StorageService:
             encoding="utf-8",
         )
 
-        title = str(metadata.get("title")) if metadata.get("title") else None
-        markdown = to_markdown(transcript, title=title)
+        markdown = to_markdown(transcript, metadata=metadata)
         transcript_md_path.write_text(markdown, encoding="utf-8")
         transcript_txt_path.write_text((transcript.text or "").strip() + "\n", encoding="utf-8")
 
