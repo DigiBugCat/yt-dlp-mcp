@@ -1,0 +1,1 @@
+"""Reserved MCP module namespace."""

@@ -1,0 +1,36 @@
+services:
+  app:
+    image: ghcr.io/${GITHUB_OWNER:-example}/yt-dlp-mcp:latest
+    build:
+      context: .
+      args:
+        YTDLP_CHANNEL: ${YTDLP_CHANNEL:-nightly}
+    restart: unless-stopped
+    environment:
+      - HOST=0.0.0.0
+      - PORT=3000
+      - MCP_PATH=/mcp
+      - HEALTH_PATH=/healthz
+      - POLL_INTERVAL_SECONDS=${POLL_INTERVAL_SECONDS:-5}
+      - DATA_DIR=/data
+      - DATABASE_PATH=/data/yt_dlp_mcp.sqlite3
+      - ASSEMBLYAI_API_KEY=${ASSEMBLYAI_API_KEY}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - PUBLIC_BASE_URL=${PUBLIC_BASE_URL}
+      - API_KEY=${API_KEY:-}
+    volumes:
+      - yt-dlp-data:/data
+    expose:
+      - "3000"
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: yt-dlp-mcp-cloudflared
+    restart: unless-stopped
+    depends_on:
+      - app
+    command: tunnel --no-autoupdate run --token ${CF_TUNNEL_TOKEN}
+
+volumes:
+  yt-dlp-data:
