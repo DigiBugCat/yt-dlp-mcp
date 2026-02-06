@@ -6,6 +6,8 @@ services:
       args:
         YTDLP_CHANNEL: ${YTDLP_CHANNEL:-nightly}
     restart: unless-stopped
+    labels:
+      - "com.centurylinklabs.watchtower.scope=yt-dlp-mcp"
     environment:
       - HOST=0.0.0.0
       - PORT=3000
@@ -31,6 +33,19 @@ services:
     depends_on:
       - app
     command: tunnel --no-autoupdate run --token ${CF_TUNNEL_TOKEN}
+
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: yt-dlp-mcp-watchtower
+    restart: unless-stopped
+    environment:
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_SCHEDULE=0 0 4 * * *
+      - WATCHTOWER_SCOPE=yt-dlp-mcp
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    labels:
+      - "com.centurylinklabs.watchtower.scope=yt-dlp-mcp"
 
 volumes:
   yt-dlp-data:

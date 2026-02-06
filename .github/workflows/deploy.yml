@@ -47,16 +47,3 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository_owner }}/yt-dlp-mcp:latest
             ghcr.io/${{ github.repository_owner }}/yt-dlp-mcp:${{ github.sha }}
-
-      - name: Deploy over SSH
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          script: |
-            cd ~/yt-dlp-mcp
-            export GITHUB_OWNER=${{ github.repository_owner }}
-            docker compose pull app
-            docker compose up -d --remove-orphans
-            docker image prune -f
