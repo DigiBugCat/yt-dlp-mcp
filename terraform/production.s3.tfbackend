@@ -1,0 +1,6 @@
+bucket = "terraform-state"
+key    = "production/yt-dlp-mcp/terraform.tfstate"
+
+endpoints = {
+  s3 = "https://6e0f27df112f7601b51fdb6241d6bafe.r2.cloudflarestorage.com"
+}

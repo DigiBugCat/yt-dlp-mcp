@@ -42,7 +42,7 @@ if [[ -n "${CLOUDFLARE_API_KEY:-}" ]]; then
   TF_ARGS+=( -var "cloudflare_api_key=${CLOUDFLARE_API_KEY}" )
 fi
 
-$TF -chdir=terraform init -upgrade
+$TF -chdir=terraform init -upgrade -backend-config=production.s3.tfbackend
 $TF -chdir=terraform apply -auto-approve "${TF_ARGS[@]}"
 
 # Capture the tunnel token without printing it.

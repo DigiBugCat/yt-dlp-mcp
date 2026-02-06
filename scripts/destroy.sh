@@ -33,5 +33,5 @@ fi
 # Stop containers first (doesn't delete the volume unless you ask it to).
 docker compose down
 
-$TF -chdir=terraform init
+$TF -chdir=terraform init -backend-config=production.s3.tfbackend
 $TF -chdir=terraform destroy -auto-approve "${TF_ARGS[@]}"

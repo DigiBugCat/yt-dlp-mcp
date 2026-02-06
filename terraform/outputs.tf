@@ -11,14 +11,3 @@ output "tunnel_token" {
   sensitive = true
 }
 
-# Access service token for frontend
-output "cf_access_client_id" {
-  description = "CF Access Client ID for frontend"
-  value       = cloudflare_zero_trust_access_service_token.frontend.client_id
-}
-
-output "cf_access_client_secret" {
-  description = "CF Access Client Secret for frontend"
-  value       = cloudflare_zero_trust_access_service_token.frontend.client_secret
-  sensitive   = true
-}
