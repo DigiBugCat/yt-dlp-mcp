@@ -71,6 +71,11 @@ def _build_auth(settings: Settings) -> Any:
     signature = inspect.signature(GoogleProvider)
     if "base_url" in signature.parameters:
         kwargs["base_url"] = settings.public_base_url
+    if "allowed_client_redirect_uris" in signature.parameters:
+        kwargs["allowed_client_redirect_uris"] = [
+            "http://localhost:*",
+            "https://claude.ai/api/mcp/auth_callback",
+        ]
 
     return GoogleProvider(**kwargs)
 
