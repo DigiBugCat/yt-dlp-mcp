@@ -9,7 +9,7 @@ Async MCP service that downloads video audio with **yt-dlp** and transcribes it 
                                      │ MCP (SSE/HTTP)
                                      v
                           ┌──────────────────────┐
-                          │  mcp-server/          │
+                          │  mcp_server/          │
                           │  FastMCP proxy        │
                           │  (fastmcp.cloud)      │
                           └──────────┬───────────┘
@@ -62,7 +62,7 @@ Duplicate URLs are deduplicated automatically — if a transcript already exists
 
 ```
 yt-dlp-mcp/
-├── mcp-server/          # FastMCP proxy (deployed to fastmcp.cloud)
+├── mcp_server/          # FastMCP proxy (deployed to fastmcp.cloud)
 │   ├── server.py        #   OAuth + CF Access → proxies to backend
 │   └── pyproject.toml
 ├── backend/             # Transcription service (Docker)

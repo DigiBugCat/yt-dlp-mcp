@@ -1,7 +1,7 @@
 # yt-dlp-mcp Operational Notes
 
 ## Repo Layout
-- `mcp-server/` — FastMCP frontend proxy (standalone, deployed separately)
+- `mcp_server/` — FastMCP frontend proxy (standalone, deployed separately)
 - `backend/` — yt-dlp + AssemblyAI transcription service (Docker)
 - `terraform/` — shared Cloudflare infra (tunnel + DNS)
 
