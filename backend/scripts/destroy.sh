@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+BACKEND_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT_DIR="$(cd "$BACKEND_DIR/.." && pwd)"
 cd "$ROOT_DIR"
 
 set -a
@@ -9,7 +10,7 @@ set -a
 . ./.env
 set +a
 
-TF="${ROOT_DIR}/scripts/terraformw.sh"
+TF="${BACKEND_DIR}/scripts/terraformw.sh"
 
 TF_ARGS=(
   -var "account_id=${CLOUDFLARE_ACCOUNT_ID}"
@@ -31,7 +32,7 @@ if [[ -n "${CLOUDFLARE_API_KEY:-}" ]]; then
 fi
 
 # Stop containers first (doesn't delete the volume unless you ask it to).
-docker compose down
+docker compose -f backend/docker-compose.yml down
 
 $TF -chdir=terraform init -backend-config=production.s3.tfbackend
 $TF -chdir=terraform destroy -auto-approve "${TF_ARGS[@]}"

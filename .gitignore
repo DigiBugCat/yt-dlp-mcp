@@ -17,3 +17,4 @@ terraform/terraform.tfstate.*
 terraform/.terraform.lock.hcl
 terraform/*.tfvars
 .tools/
+backend/.tools/

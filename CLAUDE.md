@@ -1,5 +1,10 @@
 # yt-dlp-mcp Operational Notes
 
+## Repo Layout
+- `mcp-server/` — FastMCP frontend proxy (standalone, deployed separately)
+- `backend/` — yt-dlp + AssemblyAI transcription service (Docker)
+- `terraform/` — shared Cloudflare infra (tunnel + DNS)
+
 ## Runtime Model
 - Async MCP contract: `transcribe` always returns immediately with a `job_id` unless deduplicated.
 - Background worker polls every 5 seconds and processes exactly one job at a time.

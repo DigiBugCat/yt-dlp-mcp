@@ -5,8 +5,8 @@ set -euo pipefail
 # - Downloads a known-good terraform version into .tools/terraform if missing
 # - Executes it with provided args
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-TOOLS_DIR="$ROOT_DIR/.tools"
+BACKEND_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+TOOLS_DIR="$BACKEND_DIR/.tools"
 TF_BIN="$TOOLS_DIR/terraform"
 TF_VERSION="1.14.4"
 

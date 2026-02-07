@@ -3,6 +3,8 @@
 SHELL := /bin/bash
 .SHELLFLAGS := -euo pipefail -c
 
+COMPOSE := docker compose -f backend/docker-compose.yml
+
 .PHONY: help
 help:
 	@echo "yt-dlp-mcp"
@@ -22,8 +24,8 @@ help:
 	@echo "  make tf-init            terraform init"
 	@echo "  make tf-apply           terraform apply (requires CF account/zone vars)"
 	@echo "  make tf-destroy         terraform destroy"
-	@echo "  make deploy             Run scripts/deploy.sh (apply + write CF_TUNNEL_TOKEN + up-tunnel)"
-	@echo "  make destroy            Run scripts/destroy.sh (down + destroy)"
+	@echo "  make deploy             Run backend/scripts/deploy.sh (apply + write CF_TUNNEL_TOKEN + up-tunnel)"
+	@echo "  make destroy            Run backend/scripts/destroy.sh (down + destroy)"
 	@echo ""
 	@echo "Notes:"
 	@echo "  - Uses .env automatically via docker compose."
@@ -31,39 +33,39 @@ help:
 
 .PHONY: build
 build:
-	docker compose build app
+	$(COMPOSE) build app
 
 .PHONY: up
 up:
-	docker compose up -d app
+	$(COMPOSE) up -d app
 
 .PHONY: up-tunnel
 up-tunnel:
-	docker compose up -d app cloudflared
+	$(COMPOSE) up -d app cloudflared
 
 .PHONY: down
 down:
-	docker compose down
+	$(COMPOSE) down
 
 .PHONY: ps
 ps:
-	docker compose ps
+	$(COMPOSE) ps
 
 .PHONY: logs-app
 logs-app:
-	docker compose logs -f --tail=200 app
+	$(COMPOSE) logs -f --tail=200 app
 
 .PHONY: logs-tunnel
 logs-tunnel:
-	docker compose logs -f --tail=200 cloudflared
+	$(COMPOSE) logs -f --tail=200 cloudflared
 
 .PHONY: health
 health:
-	docker compose exec -T app curl -fsS http://127.0.0.1:3000/healthz
+	$(COMPOSE) exec -T app curl -fsS http://127.0.0.1:3000/healthz
 
 .PHONY: mcp-smoke
 mcp-smoke:
-	docker compose exec -T app python - <<-'PY'
+	$(COMPOSE) exec -T app python - <<-'PY'
 	import asyncio
 	from fastmcp import Client
 
@@ -83,20 +85,20 @@ mcp-smoke:
 
 .PHONY: tf-init
 tf-init:
-	./scripts/terraformw.sh -chdir=terraform init -upgrade
+	backend/scripts/terraformw.sh -chdir=terraform init -upgrade
 
 .PHONY: tf-apply
 tf-apply:
-	./scripts/terraformw.sh -chdir=terraform apply
+	backend/scripts/terraformw.sh -chdir=terraform apply
 
 .PHONY: tf-destroy
 tf-destroy:
-	./scripts/terraformw.sh -chdir=terraform destroy
+	backend/scripts/terraformw.sh -chdir=terraform destroy
 
 .PHONY: deploy
 deploy:
-	./scripts/deploy.sh
+	backend/scripts/deploy.sh
 
 .PHONY: destroy
 destroy:
-	./scripts/destroy.sh
+	backend/scripts/destroy.sh

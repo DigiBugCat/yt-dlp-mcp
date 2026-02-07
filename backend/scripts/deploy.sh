@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+BACKEND_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT_DIR="$(cd "$BACKEND_DIR/.." && pwd)"
 cd "$ROOT_DIR"
 
 if [[ ! -f .env ]]; then
-  echo "Missing .env. Create it (see .env.example) and set Cloudflare + OAuth variables." >&2
+  echo "Missing .env. Create it (see backend/.env.example) and set Cloudflare + OAuth variables." >&2
   exit 1
 fi
 
@@ -15,7 +16,7 @@ set -a
 . ./.env
 set +a
 
-TF="${ROOT_DIR}/scripts/terraformw.sh"
+TF="${BACKEND_DIR}/scripts/terraformw.sh"
 
 : "${CLOUDFLARE_ACCOUNT_ID:?Set CLOUDFLARE_ACCOUNT_ID in .env}"
 : "${CLOUDFLARE_ZONE_ID:?Set CLOUDFLARE_ZONE_ID in .env}"
@@ -70,6 +71,6 @@ env_path.write_text("\n".join(out) + "\n", encoding="utf-8")
 PY
 
 # Bring up app + cloudflared.
-docker compose up -d app cloudflared
+docker compose -f backend/docker-compose.yml up -d app cloudflared
 
 echo "Deployed. Hostname: https://${SUBDOMAIN}.${DOMAIN}"
