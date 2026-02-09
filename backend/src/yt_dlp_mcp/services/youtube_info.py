@@ -46,6 +46,13 @@ class YouTubeInfoService:
             })
         return results
 
+    _METADATA_KEYS = [
+        "id", "title", "description", "channel", "channel_id", "channel_url",
+        "uploader", "upload_date", "duration", "view_count", "like_count",
+        "comment_count", "age_limit", "categories", "tags", "thumbnail",
+        "webpage_url", "original_url", "language", "subtitles",
+    ]
+
     def get_metadata(self, url: str) -> dict[str, Any]:
         cmd = [
             "yt-dlp",
@@ -56,7 +63,8 @@ class YouTubeInfoService:
             url,
         ]
         completed = self._run_ytdlp(cmd, timeout=30)
-        return json.loads(completed.stdout)
+        raw = json.loads(completed.stdout)
+        return {k: raw[k] for k in self._METADATA_KEYS if k in raw}
 
     def get_comments(
         self, url: str, limit: int = 20, sort: str = "top"
