@@ -8,6 +8,7 @@ from fastmcp import FastMCP
 
 from yt_dlp_mcp.db.jobs import JobsRepository
 from yt_dlp_mcp.db.transcripts import TranscriptsRepository
+from yt_dlp_mcp.services.youtube_info import YouTubeInfoService
 from yt_dlp_mcp.utils.url import normalize_url
 
 
@@ -17,6 +18,8 @@ class ToolRegistry:
         self.transcripts = transcripts
 
     def register(self, mcp: FastMCP) -> None:
+        yt_info = YouTubeInfoService()
+
         @mcp.tool
         def transcribe(url: str) -> dict[str, Any]:
             normalized_url = normalize_url(url)
@@ -112,3 +115,54 @@ class ToolRegistry:
                 "error": "unsupported_format",
                 "supported_formats": ["markdown", "json", "text"],
             }
+
+        @mcp.tool
+        def yt_search(query: str, limit: int = 10) -> dict[str, Any]:
+            """Search YouTube for videos.
+
+            Args:
+                query: Search query string
+                limit: Maximum number of results (default: 10)
+
+            Returns:
+                Matching YouTube videos with title, channel, duration, and view count.
+            """
+            try:
+                results = yt_info.search(query=query, limit=limit)
+                return {"query": query, "count": len(results), "results": results}
+            except RuntimeError as exc:
+                return {"error": "search_failed", "message": str(exc)}
+
+        @mcp.tool
+        def get_metadata(url: str) -> dict[str, Any]:
+            """Get full metadata for a video.
+
+            Args:
+                url: The video URL (YouTube, etc.)
+
+            Returns:
+                Complete video metadata from yt-dlp.
+            """
+            try:
+                metadata = yt_info.get_metadata(url=url)
+                return {"url": url, "metadata": metadata}
+            except RuntimeError as exc:
+                return {"error": "metadata_failed", "message": str(exc)}
+
+        @mcp.tool
+        def get_comments(url: str, limit: int = 20, sort: str = "top") -> dict[str, Any]:
+            """Get comments for a video.
+
+            Args:
+                url: The video URL (YouTube, etc.)
+                limit: Maximum number of comments (default: 20)
+                sort: Sort order - "top" or "new" (default: "top")
+
+            Returns:
+                Video comments with author, text, likes, and timestamps.
+            """
+            try:
+                comments = yt_info.get_comments(url=url, limit=limit, sort=sort)
+                return {"url": url, "count": len(comments), "sort": sort, "comments": comments}
+            except RuntimeError as exc:
+                return {"error": "comments_failed", "message": str(exc)}

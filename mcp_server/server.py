@@ -131,6 +131,56 @@ async def read_transcript(video_id: str, format: str = "markdown") -> dict[str, 
         return _extract_result(result)
 
 
+@mcp.tool
+async def yt_search(query: str, limit: int = 10) -> dict[str, Any]:
+    """Search YouTube for videos.
+
+    Args:
+        query: Search query string
+        limit: Maximum number of results (default: 10)
+
+    Returns:
+        Matching YouTube videos with title, channel, duration, and view count.
+    """
+    async with _backend_session() as backend:
+        result = await backend.call_tool("yt_search", {"query": query, "limit": limit})
+        return _extract_result(result)
+
+
+@mcp.tool
+async def get_metadata(url: str) -> dict[str, Any]:
+    """Get full metadata for a video.
+
+    Args:
+        url: The video URL (YouTube, etc.)
+
+    Returns:
+        Complete video metadata from yt-dlp.
+    """
+    async with _backend_session() as backend:
+        result = await backend.call_tool("get_metadata", {"url": url})
+        return _extract_result(result)
+
+
+@mcp.tool
+async def get_comments(url: str, limit: int = 20, sort: str = "top") -> dict[str, Any]:
+    """Get comments for a video.
+
+    Args:
+        url: The video URL (YouTube, etc.)
+        limit: Maximum number of comments (default: 20)
+        sort: Sort order - "top" or "new" (default: "top")
+
+    Returns:
+        Video comments with author, text, likes, and timestamps.
+    """
+    async with _backend_session() as backend:
+        result = await backend.call_tool(
+            "get_comments", {"url": url, "limit": limit, "sort": sort}
+        )
+        return _extract_result(result)
+
+
 def _extract_result(result: Any) -> dict[str, Any]:
     """Extract the actual result from MCP tool response."""
     if isinstance(result, dict):
