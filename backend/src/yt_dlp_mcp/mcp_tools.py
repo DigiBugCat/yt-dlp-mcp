@@ -75,39 +75,59 @@ class ToolRegistry:
             }
 
         @mcp.tool
-        def read_transcript(video_id: str, format: str = "markdown") -> dict[str, Any]:
+        def read_transcript(
+            video_id: str,
+            format: str = "markdown",
+            offset: int = 0,
+            limit: int | None = None,
+        ) -> dict[str, Any]:
+            """Read a transcript by video ID.
+
+            Args:
+                video_id: The video ID to read
+                format: Output format - "markdown", "text", or "json" (default: "markdown")
+                offset: Number of lines (markdown/text) or segments (json) to skip (default: 0)
+                limit: Max lines/segments to return. None returns all remaining.
+
+            Returns:
+                Transcript content with pagination info (total, offset, count).
+            """
             transcript = self.transcripts.get_by_video_id(video_id)
             if transcript is None:
                 return {"error": "transcript_not_found", "video_id": video_id}
 
             base = Path(str(transcript["path"]))
-            if format == "markdown":
-                file_path = base / "transcript.md"
-                content = file_path.read_text(encoding="utf-8") if file_path.exists() else ""
-                return {
-                    "video_id": video_id,
-                    "format": "markdown",
-                    "content": content,
-                    "metadata": transcript,
-                }
 
-            if format == "text":
-                file_path = base / "transcript.txt"
-                content = file_path.read_text(encoding="utf-8") if file_path.exists() else ""
+            if format in ("markdown", "text"):
+                ext = "md" if format == "markdown" else "txt"
+                file_path = base / f"transcript.{ext}"
+                full = file_path.read_text(encoding="utf-8") if file_path.exists() else ""
+                lines = full.splitlines(keepends=True)
+                total = len(lines)
+                page = lines[offset:] if limit is None else lines[offset:offset + limit]
                 return {
                     "video_id": video_id,
-                    "format": "text",
-                    "content": content,
+                    "format": format,
+                    "content": "".join(page),
+                    "total_lines": total,
+                    "offset": offset,
+                    "lines_returned": len(page),
                     "metadata": transcript,
                 }
 
             if format == "json":
                 file_path = base / "transcript.json"
                 payload = json.loads(file_path.read_text(encoding="utf-8")) if file_path.exists() else {}
+                segments = payload.get("segments", payload.get("utterances", []))
+                total = len(segments)
+                page = segments[offset:] if limit is None else segments[offset:offset + limit]
                 return {
                     "video_id": video_id,
                     "format": "json",
-                    "content": payload,
+                    "content": page,
+                    "total_segments": total,
+                    "offset": offset,
+                    "segments_returned": len(page),
                     "metadata": transcript,
                 }
 

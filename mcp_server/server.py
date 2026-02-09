@@ -114,20 +114,29 @@ async def list_transcripts(
 
 
 @mcp.tool
-async def read_transcript(video_id: str, format: str = "markdown") -> dict[str, Any]:
+async def read_transcript(
+    video_id: str,
+    format: str = "markdown",
+    offset: int = 0,
+    limit: int | None = None,
+) -> dict[str, Any]:
     """Read a transcript by video ID.
 
     Args:
         video_id: The video ID to read
         format: Output format - "markdown", "text", or "json" (default: "markdown")
+        offset: Number of lines (markdown/text) or segments (json) to skip (default: 0)
+        limit: Max lines/segments to return. None returns all remaining.
 
     Returns:
-        Transcript content in the requested format.
+        Transcript content in the requested format with pagination info.
     """
+    args: dict[str, Any] = {"video_id": video_id, "format": format, "offset": offset}
+    if limit is not None:
+        args["limit"] = limit
+
     async with _backend_session() as backend:
-        result = await backend.call_tool(
-            "read_transcript", {"video_id": video_id, "format": format}
-        )
+        result = await backend.call_tool("read_transcript", args)
         return _extract_result(result)
 
 
