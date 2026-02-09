@@ -17,10 +17,6 @@ services:
       - DATA_DIR=/data
       - DATABASE_PATH=/data/yt_dlp_mcp.sqlite3
       - ASSEMBLYAI_API_KEY=${ASSEMBLYAI_API_KEY}
-      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
-      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
-      - PUBLIC_BASE_URL=${PUBLIC_BASE_URL}
-      - API_KEY=${API_KEY:-}
     volumes:
       - yt-dlp-data:/data
     expose:

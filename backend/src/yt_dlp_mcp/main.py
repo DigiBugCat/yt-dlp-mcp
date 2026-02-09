@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import atexit
-import inspect
 import logging
-from typing import Any
 
 from fastmcp import FastMCP
 from starlette.requests import Request
@@ -49,43 +47,8 @@ class AppRuntime:
         self.database.close()
 
 
-def _build_auth(settings: Settings) -> Any:
-    has_client_id = bool(settings.google_client_id)
-    has_client_secret = bool(settings.google_client_secret)
-    if not has_client_id and not has_client_secret:
-        return None
-    if not has_client_id or not has_client_secret:
-        raise RuntimeError("Both GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are required for OAuth")
-    if not settings.public_base_url:
-        raise RuntimeError("PUBLIC_BASE_URL is required when OAuth is enabled")
-
-    try:
-        from fastmcp.server.auth.providers.google import GoogleProvider
-    except Exception as exc:  # pylint: disable=broad-except
-        raise RuntimeError("Google OAuth provider is unavailable in this FastMCP build") from exc
-
-    kwargs: dict[str, Any] = {
-        "client_id": settings.google_client_id,
-        "client_secret": settings.google_client_secret,
-    }
-    signature = inspect.signature(GoogleProvider)
-    if "base_url" in signature.parameters:
-        kwargs["base_url"] = settings.public_base_url
-    if "allowed_client_redirect_uris" in signature.parameters:
-        kwargs["allowed_client_redirect_uris"] = [
-            "http://localhost:*",
-            "https://claude.ai/api/mcp/auth_callback",
-        ]
-
-    return GoogleProvider(**kwargs)
-
-
 def create_app(runtime: AppRuntime) -> FastMCP:
-    auth = _build_auth(runtime.settings)
-    if auth is None:
-        mcp = FastMCP(name="yt-dlp-mcp")
-    else:
-        mcp = FastMCP(name="yt-dlp-mcp", auth=auth)
+    mcp = FastMCP(name="yt-dlp-mcp")
 
     tools = ToolRegistry(runtime.jobs, runtime.transcripts)
     tools.register(mcp)
