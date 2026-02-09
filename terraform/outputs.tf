@@ -11,3 +11,12 @@ output "tunnel_token" {
   sensitive = true
 }
 
+output "cf_access_client_id" {
+  value = cloudflare_zero_trust_access_service_token.fastmcp_frontend.client_id
+}
+
+output "cf_access_client_secret" {
+  value     = cloudflare_zero_trust_access_service_token.fastmcp_frontend.client_secret
+  sensitive = true
+}
+

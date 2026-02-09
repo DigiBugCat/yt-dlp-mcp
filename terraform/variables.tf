@@ -21,21 +21,25 @@ variable "cloudflare_api_key" {
 variable "account_id" {
   description = "Cloudflare account ID that owns the tunnel."
   type        = string
+  default     = "6e0f27df112f7601b51fdb6241d6bafe"
 }
 
 variable "zone_id" {
   description = "Cloudflare zone ID for the domain."
   type        = string
+  default     = "b942a4b0636e7f522d440d29703aa249"
 }
 
 variable "domain" {
   description = "Root domain, e.g. pantainos.net"
   type        = string
+  default     = "pantainos.net"
 }
 
 variable "subdomain" {
   description = "Subdomain label, e.g. yt-cli"
   type        = string
+  default     = "yt-cli"
 }
 
 variable "tunnel_name" {

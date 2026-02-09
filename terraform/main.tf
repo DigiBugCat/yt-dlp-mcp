@@ -51,3 +51,40 @@ data "cloudflare_zero_trust_tunnel_cloudflared_token" "token" {
   tunnel_id  = cloudflare_zero_trust_tunnel_cloudflared.tunnel.id
 }
 
+# --- Cloudflare Access (protect backend) ---
+
+resource "cloudflare_zero_trust_access_application" "app" {
+  account_id       = var.account_id
+  type             = "self_hosted"
+  name             = "yt-dlp-mcp"
+  domain           = local.hostname
+  session_duration = "24h"
+  policies = [
+    {
+      id         = cloudflare_zero_trust_access_policy.service_token.id
+      precedence = 1
+    }
+  ]
+}
+
+resource "cloudflare_zero_trust_access_service_token" "fastmcp_frontend" {
+  account_id = var.account_id
+  name       = "fastmcp-cloud-frontend"
+  duration   = "8760h"
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource "cloudflare_zero_trust_access_policy" "service_token" {
+  account_id = var.account_id
+  name       = "Allow service token"
+  decision   = "non_identity"
+  include = [
+    {
+      any_valid_service_token = {}
+    }
+  ]
+}
+
