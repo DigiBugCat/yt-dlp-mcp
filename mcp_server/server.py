@@ -12,6 +12,7 @@ from typing import Any, AsyncIterator
 
 from fastmcp import Client, FastMCP
 from fastmcp.client.transports import StreamableHttpTransport
+from mcp.types import ToolAnnotations
 
 BACKEND_URL = os.environ.get("BACKEND_URL", "https://yt-cli.pantainos.net/mcp")
 CF_CLIENT_ID = os.environ.get("CF_ACCESS_CLIENT_ID", "")
@@ -38,9 +39,10 @@ async def _backend_session() -> AsyncIterator[Client]:
 
 
 mcp = FastMCP("yt-dlp-mcp")
+_ro = ToolAnnotations(readOnlyHint=True)
 
 
-@mcp.tool
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=False, idempotentHint=True))
 async def transcribe(url: str) -> dict[str, Any]:
     """Queue a video for transcription.
 
@@ -55,7 +57,7 @@ async def transcribe(url: str) -> dict[str, Any]:
         return _extract_result(result)
 
 
-@mcp.tool
+@mcp.tool(annotations=_ro)
 async def job_status(job_id: str) -> dict[str, Any]:
     """Get the status of a transcription job.
 
@@ -70,7 +72,7 @@ async def job_status(job_id: str) -> dict[str, Any]:
         return _extract_result(result)
 
 
-@mcp.tool
+@mcp.tool(annotations=_ro)
 async def search(query: str, limit: int = 10) -> dict[str, Any]:
     """Search transcripts by content.
 
@@ -86,7 +88,7 @@ async def search(query: str, limit: int = 10) -> dict[str, Any]:
         return _extract_result(result)
 
 
-@mcp.tool
+@mcp.tool(annotations=_ro)
 async def list_transcripts(
     platform: str | None = None,
     channel: str | None = None,
@@ -113,7 +115,7 @@ async def list_transcripts(
         return _extract_result(result)
 
 
-@mcp.tool
+@mcp.tool(annotations=_ro)
 async def read_transcript(
     video_id: str,
     format: str = "markdown",
@@ -140,7 +142,7 @@ async def read_transcript(
         return _extract_result(result)
 
 
-@mcp.tool
+@mcp.tool(annotations=_ro)
 async def yt_search(query: str, limit: int = 10) -> dict[str, Any]:
     """Search YouTube for videos.
 
@@ -156,7 +158,7 @@ async def yt_search(query: str, limit: int = 10) -> dict[str, Any]:
         return _extract_result(result)
 
 
-@mcp.tool
+@mcp.tool(annotations=_ro)
 async def get_metadata(url: str) -> dict[str, Any]:
     """Get full metadata for a video.
 
@@ -171,7 +173,7 @@ async def get_metadata(url: str) -> dict[str, Any]:
         return _extract_result(result)
 
 
-@mcp.tool
+@mcp.tool(annotations=_ro)
 async def get_comments(url: str, limit: int = 20, sort: str = "top") -> dict[str, Any]:
     """Get comments for a video.
 

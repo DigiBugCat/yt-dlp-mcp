@@ -11,9 +11,15 @@ class DummyMCP:
     def __init__(self) -> None:
         self.tools: dict[str, Any] = {}
 
-    def tool(self, fn: Any) -> Any:
-        self.tools[fn.__name__] = fn
-        return fn
+    def tool(self, fn: Any = None, **kwargs: Any) -> Any:
+        if fn is not None:
+            self.tools[fn.__name__] = fn
+            return fn
+
+        def decorator(f: Any) -> Any:
+            self.tools[f.__name__] = f
+            return f
+        return decorator
 
 
 def test_transcribe_returns_existing_transcript(tmp_path: Path) -> None:
