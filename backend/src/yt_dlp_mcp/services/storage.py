@@ -8,6 +8,9 @@ from pathlib import Path
 from yt_dlp_mcp.types import TranscriptResult
 
 
+PAUSE_THRESHOLD_SECONDS = 2.0
+
+
 def _sanitize_path_component(value: str, fallback: str) -> str:
     clean = re.sub(r"[^a-zA-Z0-9._-]+", "_", value.strip())
     clean = clean.strip("._")
@@ -105,10 +108,35 @@ def to_markdown(
         lines.append(result.text or "")
         return "\n".join(lines).strip() + "\n"
 
+    prev = None
     for segment in result.segments:
+        if prev is not None:
+            gap = segment.start - prev.end
+            speaker_changed = segment.speaker != prev.speaker
+            if gap >= PAUSE_THRESHOLD_SECONDS or speaker_changed:
+                lines.append("")
         label = segment.speaker or "Speaker"
         timestamp = _format_timestamp(segment.start)
         lines.append(f"- [{timestamp}] **{label}**: {segment.text}")
+        prev = segment
+
+    return "\n".join(lines).strip() + "\n"
+
+
+def to_plain_text(result: TranscriptResult) -> str:
+    if not result.segments:
+        return (result.text or "").strip() + "\n"
+
+    lines: list[str] = []
+    prev = None
+    for segment in result.segments:
+        if prev is not None:
+            gap = segment.start - prev.end
+            speaker_changed = segment.speaker != prev.speaker
+            if gap >= PAUSE_THRESHOLD_SECONDS or speaker_changed:
+                lines.append("")
+        lines.append(segment.text)
+        prev = segment
 
     return "\n".join(lines).strip() + "\n"
 
@@ -166,7 +194,7 @@ class StorageService:
 
         markdown = to_markdown(transcript, metadata=metadata)
         transcript_md_path.write_text(markdown, encoding="utf-8")
-        transcript_txt_path.write_text((transcript.text or "").strip() + "\n", encoding="utf-8")
+        transcript_txt_path.write_text(to_plain_text(transcript), encoding="utf-8")
 
         shutil.move(str(temp_audio_path), str(audio_dest_path))
 

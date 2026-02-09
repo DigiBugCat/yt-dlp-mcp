@@ -32,10 +32,12 @@ class AssemblyAITranscriber:
             audio_url = self._upload_audio(client, headers, audio_path)
             transcript_id = self._start_transcript(client, headers, audio_url)
             payload = self._poll_transcript(client, headers, transcript_id)
+            sentences = self._fetch_sentences(client, headers, transcript_id)
 
         text = str(payload.get("text") or "").strip()
-        utterances = payload.get("utterances")
-        segments = self._extract_segments(utterances)
+        segments = self._extract_segments(sentences)
+        if not segments:
+            segments = self._extract_segments(payload.get("utterances"))
         if not text and segments:
             text = "\n".join(segment.text for segment in segments).strip()
 
@@ -111,6 +113,20 @@ class AssemblyAITranscriber:
                 raise RuntimeError("AssemblyAI transcription polling timed out")
 
             time.sleep(self.poll_interval_seconds)
+
+    def _fetch_sentences(
+        self,
+        client: httpx.Client,
+        headers: dict[str, str],
+        transcript_id: str,
+    ) -> list[dict[str, Any]]:
+        url = f"{self.base_url}/transcript/{transcript_id}/sentences"
+        response = client.get(url, headers=headers)
+        if response.status_code >= 400:
+            return []
+        payload = response.json()
+        sentences = payload.get("sentences")
+        return sentences if isinstance(sentences, list) else []
 
     def _extract_segments(self, utterances: object) -> list[TranscriptSegment]:
         if not isinstance(utterances, list):
