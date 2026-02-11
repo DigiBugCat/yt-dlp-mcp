@@ -40,7 +40,8 @@ class Database:
                   completed_at TEXT,
                   error TEXT,
                   video_id TEXT,
-                  result_path TEXT
+                  result_path TEXT,
+                  poll_count INTEGER NOT NULL DEFAULT 0
                 );
 
                 CREATE INDEX IF NOT EXISTS idx_jobs_status_created_at
@@ -80,6 +81,19 @@ class Database:
                   transcript_text
                 );
                 """
+            )
+            self._conn.commit()
+            self._migrate()
+
+    def _migrate(self) -> None:
+        """Add columns that may be missing from older databases."""
+        columns = {
+            row[1]
+            for row in self._conn.execute("PRAGMA table_info(jobs)").fetchall()
+        }
+        if "poll_count" not in columns:
+            self._conn.execute(
+                "ALTER TABLE jobs ADD COLUMN poll_count INTEGER NOT NULL DEFAULT 0"
             )
             self._conn.commit()
 

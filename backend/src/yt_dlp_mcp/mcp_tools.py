@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import time
 from pathlib import Path
 from typing import Any
 
@@ -55,6 +56,15 @@ class ToolRegistry:
             job = self.jobs.get(job_id)
             if job is None:
                 return {"error": "job_not_found", "job_id": job_id}
+
+            status = str(job.get("status", ""))
+            if status not in ("completed", "failed"):
+                poll_count = self.jobs.increment_poll_count(job_id)
+                delay = min(1.0 * (2 ** (poll_count - 1)), 30.0)
+                time.sleep(delay)
+                # Re-fetch in case it finished while we waited
+                job = self.jobs.get(job_id) or job
+
             return job
 
         @mcp.tool(annotations=_ro)

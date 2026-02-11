@@ -91,6 +91,19 @@ class JobsRepository:
             )
             self.db.conn.commit()
 
+    def increment_poll_count(self, job_id: str) -> int:
+        """Increment poll_count and return the new value."""
+        with self.db.lock:
+            self.db.conn.execute(
+                "UPDATE jobs SET poll_count = poll_count + 1 WHERE id = ?",
+                (job_id,),
+            )
+            self.db.conn.commit()
+        row = self.db.conn.execute(
+            "SELECT poll_count FROM jobs WHERE id = ?", (job_id,)
+        ).fetchone()
+        return int(row["poll_count"]) if row else 0
+
     def mark_failed(self, job_id: str, error: str) -> None:
         with self.db.lock:
             self.db.conn.execute(
