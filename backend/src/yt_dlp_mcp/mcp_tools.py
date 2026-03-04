@@ -1,17 +1,16 @@
 from __future__ import annotations
 
 import json
-import time
 from pathlib import Path
 from typing import Any
 
 from fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 
-from yt_dlp_mcp.db.jobs import JobsRepository
+from yt_dlp_mcp.db.jobs import ACTIVE_STATUSES, JobsRepository
 from yt_dlp_mcp.db.transcripts import TranscriptsRepository
 from yt_dlp_mcp.services.youtube_info import YouTubeInfoService
-from yt_dlp_mcp.utils.url import normalize_url
+from yt_dlp_mcp.utils.url import normalize_url, extract_youtube_video_id
 
 
 class ToolRegistry:
@@ -28,6 +27,12 @@ class ToolRegistry:
             normalized_url = normalize_url(url)
 
             existing = self.transcripts.get_by_normalized_url(normalized_url)
+            if existing is None:
+                # Also check by video_id — catches cases where the same video was
+                # previously stored under a different URL form (e.g. /live/ vs /watch?v=)
+                video_id = extract_youtube_video_id(normalized_url)
+                if video_id:
+                    existing = self.transcripts.get_by_video_id(video_id)
             if existing is not None:
                 return {
                     "status": "completed",
@@ -56,15 +61,16 @@ class ToolRegistry:
             job = self.jobs.get(job_id)
             if job is None:
                 return {"error": "job_not_found", "job_id": job_id}
-
-            status = str(job.get("status", ""))
-            if status not in ("completed", "failed"):
-                poll_count = self.jobs.increment_poll_count(job_id)
-                delay = min(1.0 * (2 ** (poll_count - 1)), 30.0)
-                time.sleep(delay)
-                # Re-fetch in case it finished while we waited
-                job = self.jobs.get(job_id) or job
-
+            if job["status"] in ACTIVE_STATUSES:
+                self.jobs.increment_poll_count(job_id)
+                job = self.jobs.get(job_id)
+                poll_count = int(job.get("poll_count") or 0)
+                poll_retry_after = min(5 * (2 ** (poll_count // 3)), 60)
+                extras: dict[str, Any] = {"retry_after": poll_retry_after}
+                if job.get("retry_after"):
+                    extras["waiting_until"] = job["retry_after"]
+                    extras["attempt"] = int(job.get("attempt") or 0)
+                return {**job, **extras}
             return job
 
         @mcp.tool(annotations=_ro)

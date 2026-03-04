@@ -3,7 +3,7 @@
 SHELL := /bin/bash
 .SHELLFLAGS := -euo pipefail -c
 
-COMPOSE := docker compose -f backend/docker-compose.yml
+COMPOSE := docker compose --env-file .env -f backend/docker-compose.yml
 
 .PHONY: help
 help:

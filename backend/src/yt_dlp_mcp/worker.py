@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import shutil
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from threading import Event, Thread
 
@@ -12,6 +13,8 @@ from yt_dlp_mcp.services.storage import StorageService
 from yt_dlp_mcp.services.transcriber import AssemblyAITranscriber
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_MAX_WORKERS = 3
 
 
 class BackgroundWorker:
@@ -24,6 +27,7 @@ class BackgroundWorker:
         transcriber: AssemblyAITranscriber,
         storage: StorageService,
         poll_interval_seconds: int,
+        max_workers: int = DEFAULT_MAX_WORKERS,
     ) -> None:
         self.jobs = jobs
         self.transcripts = transcripts
@@ -31,8 +35,11 @@ class BackgroundWorker:
         self.transcriber = transcriber
         self.storage = storage
         self.poll_interval_seconds = poll_interval_seconds
+        self.max_workers = max_workers
         self._stop_event = Event()
         self._thread = Thread(target=self._run_loop, name="yt-dlp-mcp-worker", daemon=True)
+        self._executor = ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="yt-dlp-job")
+        self._active_count = 0
 
     def start(self) -> None:
         if not self._thread.is_alive():
@@ -40,6 +47,7 @@ class BackgroundWorker:
 
     def stop(self, timeout_seconds: float = 10.0) -> None:
         self._stop_event.set()
+        self._executor.shutdown(wait=True, cancel_futures=True)
         self._thread.join(timeout=timeout_seconds)
 
     @property
@@ -48,20 +56,31 @@ class BackgroundWorker:
 
     def _run_loop(self) -> None:
         while not self._stop_event.is_set():
+            if self._active_count >= self.max_workers:
+                self._stop_event.wait(self.poll_interval_seconds)
+                continue
+
             job = self.jobs.claim_next()
             if job is None:
                 self._stop_event.wait(self.poll_interval_seconds)
                 continue
 
-            job_id = str(job["id"])
-            try:
-                logger.info("Processing job %s", job_id)
-                self._process_job(job_id=job_id, url=str(job["url"]), normalized_url=str(job["normalized_url"]))
-                logger.info("Completed job %s", job_id)
-            except Exception as exc:  # pylint: disable=broad-except
-                message = str(exc).strip() or "Unknown worker error"
-                logger.exception("Job %s failed: %s", job_id, message)
-                self.jobs.mark_failed(job_id, message[:2000])
+            self._active_count += 1
+            self._executor.submit(self._handle_job, job)
+
+    def _handle_job(self, job: dict) -> None:
+        job_id = str(job["id"])
+        attempt = int(job.get("attempt") or 0)
+        try:
+            logger.info("Processing job %s (attempt %d)", job_id, attempt)
+            self._process_job(job_id=job_id, url=str(job["url"]), normalized_url=str(job["normalized_url"]))
+            logger.info("Completed job %s", job_id)
+        except Exception as exc:  # pylint: disable=broad-except
+            message = str(exc).strip() or "Unknown worker error"
+            logger.exception("Job %s failed (attempt %d): %s", job_id, attempt, message)
+            self.jobs.mark_failed(job_id, message[:2000], attempt)
+        finally:
+            self._active_count -= 1
 
     def _process_job(self, *, job_id: str, url: str, normalized_url: str) -> None:
         download = self.downloader.download(url=url, job_id=job_id)

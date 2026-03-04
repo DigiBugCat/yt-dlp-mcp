@@ -46,3 +46,8 @@ warn_unreachable = true
 warn_return_any = true
 warn_unused_configs = true
 packages = ["yt_dlp_mcp"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+]

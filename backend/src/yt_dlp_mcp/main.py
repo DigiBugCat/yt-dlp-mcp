@@ -40,6 +40,7 @@ class AppRuntime:
             transcriber=self.transcriber,
             storage=self.storage,
             poll_interval_seconds=settings.poll_interval_seconds,
+            max_workers=settings.max_workers,
         )
 
     def close(self) -> None:

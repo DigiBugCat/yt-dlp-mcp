@@ -7,6 +7,10 @@ from yt_dlp_mcp.db.database import Database
 
 ACTIVE_STATUSES = ("queued", "downloading", "transcribing")
 
+MAX_ATTEMPTS = 3
+_BASE_RETRY_DELAY_SECONDS = 30
+_MAX_RETRY_DELAY_SECONDS = 600
+
 
 class JobsRepository:
     def __init__(self, db: Database) -> None:
@@ -53,6 +57,7 @@ class JobsRepository:
                 """
                 SELECT * FROM jobs
                 WHERE status = 'queued'
+                  AND (retry_after IS NULL OR retry_after <= datetime('now'))
                 ORDER BY created_at ASC
                 LIMIT 1
                 """
@@ -74,6 +79,14 @@ class JobsRepository:
 
         return self.get(str(job_id))
 
+    def increment_poll_count(self, job_id: str) -> None:
+        with self.db.lock:
+            self.db.conn.execute(
+                "UPDATE jobs SET poll_count = poll_count + 1 WHERE id = ?",
+                (job_id,),
+            )
+            self.db.conn.commit()
+
     def set_status(self, job_id: str, status: str) -> None:
         with self.db.lock:
             self.db.conn.execute("UPDATE jobs SET status = ? WHERE id = ?", (status, job_id))
@@ -91,27 +104,29 @@ class JobsRepository:
             )
             self.db.conn.commit()
 
-    def increment_poll_count(self, job_id: str) -> int:
-        """Increment poll_count and return the new value."""
-        with self.db.lock:
-            self.db.conn.execute(
-                "UPDATE jobs SET poll_count = poll_count + 1 WHERE id = ?",
-                (job_id,),
-            )
-            self.db.conn.commit()
-        row = self.db.conn.execute(
-            "SELECT poll_count FROM jobs WHERE id = ?", (job_id,)
-        ).fetchone()
-        return int(row["poll_count"]) if row else 0
-
-    def mark_failed(self, job_id: str, error: str) -> None:
-        with self.db.lock:
-            self.db.conn.execute(
-                """
-                UPDATE jobs
-                SET status = 'failed', completed_at = datetime('now'), error = ?
-                WHERE id = ?
-                """,
-                (error, job_id),
-            )
-            self.db.conn.commit()
+    def mark_failed(self, job_id: str, error: str, attempt: int = 0) -> None:
+        next_attempt = attempt + 1
+        if next_attempt < MAX_ATTEMPTS:
+            delay = min(_BASE_RETRY_DELAY_SECONDS * (2 ** attempt), _MAX_RETRY_DELAY_SECONDS)
+            with self.db.lock:
+                self.db.conn.execute(
+                    """
+                    UPDATE jobs
+                    SET status = 'queued', started_at = NULL, attempt = ?,
+                        retry_after = datetime('now', ? || ' seconds'), error = ?
+                    WHERE id = ?
+                    """,
+                    (next_attempt, str(delay), error[:2000], job_id),
+                )
+                self.db.conn.commit()
+        else:
+            with self.db.lock:
+                self.db.conn.execute(
+                    """
+                    UPDATE jobs
+                    SET status = 'failed', completed_at = datetime('now'), error = ?
+                    WHERE id = ?
+                    """,
+                    (error[:2000], job_id),
+                )
+                self.db.conn.commit()

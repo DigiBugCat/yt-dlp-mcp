@@ -22,19 +22,20 @@ class Downloader:
             "--print-json",
             "--no-playlist",
             "--no-warnings",
+            "--concurrent-fragments",
+            "4",
             "-f",
-            "bestaudio",
+            "bestaudio/bestaudio*,best",
             "-x",
-            "--audio-format",
-            "mp3",
-            "--audio-quality",
-            "0",
             "-o",
             output_template,
             url,
         ]
 
-        completed = subprocess.run(cmd, capture_output=True, text=True, check=False)
+        try:
+            completed = subprocess.run(cmd, capture_output=True, text=True, check=False, timeout=600)
+        except subprocess.TimeoutExpired:
+            raise RuntimeError("yt-dlp timed out after 600 seconds")
         if completed.returncode != 0:
             stderr = completed.stderr.strip() or "yt-dlp failed"
             raise RuntimeError(stderr)
@@ -44,12 +45,12 @@ class Downloader:
         if not video_id:
             raise RuntimeError("yt-dlp did not return video ID")
 
-        audio_path = job_dir / f"{video_id}.mp3"
-        if not audio_path.exists():
-            candidates = sorted(job_dir.glob("*.mp3"))
-            if not candidates:
-                raise RuntimeError("Audio file was not produced by yt-dlp")
-            audio_path = candidates[0]
+        candidates = sorted(job_dir.glob(f"{video_id}.*"))
+        if not candidates:
+            candidates = sorted(job_dir.iterdir())
+        if not candidates:
+            raise RuntimeError("Audio file was not produced by yt-dlp")
+        audio_path = candidates[0]
 
         return DownloadResult(metadata=metadata, audio_path=str(audio_path))
 

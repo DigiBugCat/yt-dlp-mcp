@@ -170,7 +170,7 @@ class StorageService:
         transcript_json_path = video_dir / "transcript.json"
         transcript_md_path = video_dir / "transcript.md"
         transcript_txt_path = video_dir / "transcript.txt"
-        audio_dest_path = video_dir / "audio.mp3"
+        audio_dest_path = video_dir / f"audio{temp_audio_path.suffix}"
 
         metadata_path.write_text(json.dumps(metadata_with_url, indent=2, sort_keys=True), encoding="utf-8")
 

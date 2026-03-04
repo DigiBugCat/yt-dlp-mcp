@@ -17,6 +17,7 @@ class Settings:
     data_dir: Path
     database_path: Path
     assemblyai_api_key: str
+    max_workers: int
 
 
 
@@ -51,4 +52,5 @@ def load_settings() -> Settings:
         data_dir=data_dir,
         database_path=database_path,
         assemblyai_api_key=assemblyai_api_key,
+        max_workers=_as_int("MAX_WORKERS", 3),
     )

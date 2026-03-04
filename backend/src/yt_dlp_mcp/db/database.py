@@ -41,7 +41,9 @@ class Database:
                   error TEXT,
                   video_id TEXT,
                   result_path TEXT,
-                  poll_count INTEGER NOT NULL DEFAULT 0
+                  poll_count INTEGER NOT NULL DEFAULT 0,
+                  attempt INTEGER NOT NULL DEFAULT 0,
+                  retry_after TEXT
                 );
 
                 CREATE INDEX IF NOT EXISTS idx_jobs_status_created_at
@@ -82,19 +84,19 @@ class Database:
                 );
                 """
             )
-            self._conn.commit()
-            self._migrate()
+            # Migrations: add columns to existing databases that predate them
+            cols = {row[1] for row in self._conn.execute("PRAGMA table_info(jobs)")}
+            if "poll_count" not in cols:
+                self._conn.execute(
+                    "ALTER TABLE jobs ADD COLUMN poll_count INTEGER NOT NULL DEFAULT 0"
+                )
+            if "attempt" not in cols:
+                self._conn.execute(
+                    "ALTER TABLE jobs ADD COLUMN attempt INTEGER NOT NULL DEFAULT 0"
+                )
+            if "retry_after" not in cols:
+                self._conn.execute("ALTER TABLE jobs ADD COLUMN retry_after TEXT")
 
-    def _migrate(self) -> None:
-        """Add columns that may be missing from older databases."""
-        columns = {
-            row[1]
-            for row in self._conn.execute("PRAGMA table_info(jobs)").fetchall()
-        }
-        if "poll_count" not in columns:
-            self._conn.execute(
-                "ALTER TABLE jobs ADD COLUMN poll_count INTEGER NOT NULL DEFAULT 0"
-            )
             self._conn.commit()
 
     def close(self) -> None:
