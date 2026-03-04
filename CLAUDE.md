@@ -2,14 +2,16 @@
 
 ## Repo Layout
 - `mcp_server/` — FastMCP frontend proxy (standalone, deployed separately)
-- `backend/` — yt-dlp + AssemblyAI transcription service (Docker)
+- `backend/` — yt-dlp + local GPU transcription (Parakeet + pyannote) with AssemblyAI fallback (Docker, NVIDIA runtime)
 - `terraform/` — shared Cloudflare infra (tunnel + DNS)
 
 ## Runtime Model
 - Async MCP contract: `transcribe` always returns immediately with a `job_id` unless deduplicated.
 - Background worker polls every 5 seconds and processes exactly one job at a time.
 - Job lifecycle: `queued -> downloading -> transcribing -> completed|failed`.
-- Transcription provider: AssemblyAI (`/v2/upload` + `/v2/transcript` polling).
+- Primary transcription: local GPU pipeline (NVIDIA Parakeet TDT 0.6b v3 for ASR + pyannote community-1 for speaker diarization).
+- Fallback transcription: AssemblyAI (`/v2/upload` + `/v2/transcript` polling) for languages not supported by Parakeet.
+- Parakeet supports 25 European languages; unsupported languages automatically fall back to AssemblyAI if `ASSEMBLYAI_API_KEY` is set.
 
 ## Duplicate Policy
 - URL input is normalized before queueing.

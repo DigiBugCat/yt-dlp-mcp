@@ -10,7 +10,7 @@ from yt_dlp_mcp.db.jobs import JobsRepository
 from yt_dlp_mcp.db.transcripts import TranscriptsRepository
 from yt_dlp_mcp.services.downloader import Downloader
 from yt_dlp_mcp.services.storage import StorageService
-from yt_dlp_mcp.services.transcriber import AssemblyAITranscriber
+from yt_dlp_mcp.services.transcriber import Transcriber
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ class BackgroundWorker:
         jobs: JobsRepository,
         transcripts: TranscriptsRepository,
         downloader: Downloader,
-        transcriber: AssemblyAITranscriber,
+        transcriber: Transcriber,
         storage: StorageService,
         poll_interval_seconds: int,
         max_workers: int = DEFAULT_MAX_WORKERS,

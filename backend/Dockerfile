@@ -1,10 +1,19 @@
-FROM python:3.12-alpine
+FROM nvidia/cuda:12.6.3-runtime-ubuntu24.04
 
 ARG YTDLP_CHANNEL=nightly
+ARG DEBIAN_FRONTEND=noninteractive
 
-RUN apk add --no-cache ffmpeg curl ca-certificates
+# System dependencies: Python 3.12, ffmpeg, libsndfile (for audio I/O), curl.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      python3.12 python3.12-venv python3-pip \
+      ffmpeg libsndfile1 curl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install yt-dlp from channel-specific release artifacts for reproducible image builds.
+# Make python3.12 the default python/python3.
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.12 1 \
+ && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1
+
+# Install yt-dlp from channel-specific release artifacts.
 RUN set -eux; \
     if [ "$YTDLP_CHANNEL" = "nightly" ]; then \
       YTDLP_URL="https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/latest/download/yt-dlp"; \
@@ -18,14 +27,17 @@ RUN set -eux; \
     chmod +x /usr/local/bin/yt-dlp; \
     yt-dlp --version
 
-RUN addgroup -g 1001 app && adduser -u 1001 -G app -s /bin/sh -D app
+RUN groupadd -g 1001 app && useradd -u 1001 -g app -s /bin/bash -m app
 
 WORKDIR /app
 COPY pyproject.toml README.md ./
 COPY src ./src
 
+# Install PyTorch with CUDA support, then the rest of the project deps.
 RUN pip install --no-cache-dir --upgrade pip \
-  && pip install --no-cache-dir .
+ && pip install --no-cache-dir --break-system-packages \
+      torch torchaudio --index-url https://download.pytorch.org/whl/cu126 \
+ && pip install --no-cache-dir --break-system-packages .
 
 RUN mkdir -p /data && chown -R app:app /app /data
 

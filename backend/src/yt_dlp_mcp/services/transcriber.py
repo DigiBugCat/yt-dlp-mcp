@@ -2,11 +2,26 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol, runtime_checkable
 
 import httpx
 
 from yt_dlp_mcp.types import TranscriptResult, TranscriptSegment
+
+
+@runtime_checkable
+class Transcriber(Protocol):
+    """Common interface for transcription providers."""
+
+    def transcribe(self, audio_path: Path) -> TranscriptResult: ...
+
+
+class UnsupportedLanguageError(Exception):
+    """Raised when the detected language is not supported by the local transcriber."""
+
+    def __init__(self, language: str) -> None:
+        self.language = language
+        super().__init__(f"Unsupported language: {language}")
 
 
 class AssemblyAITranscriber:

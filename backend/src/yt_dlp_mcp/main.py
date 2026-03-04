@@ -14,6 +14,8 @@ from yt_dlp_mcp.db.transcripts import TranscriptsRepository
 from yt_dlp_mcp.mcp.tools import ToolRegistry
 from yt_dlp_mcp.services.downloader import Downloader
 from yt_dlp_mcp.services.storage import StorageService
+from yt_dlp_mcp.services.fallback_transcriber import FallbackTranscriber
+from yt_dlp_mcp.services.local_transcriber import LocalTranscriber
 from yt_dlp_mcp.services.transcriber import AssemblyAITranscriber
 from yt_dlp_mcp.worker import BackgroundWorker
 
@@ -31,7 +33,14 @@ class AppRuntime:
         downloader_root = settings.data_dir / "_work"
         self.downloader = Downloader(downloader_root)
         self.storage = StorageService(settings.data_dir)
-        self.transcriber = AssemblyAITranscriber(api_key=settings.assemblyai_api_key)
+
+        local = LocalTranscriber(huggingface_token=settings.huggingface_token)
+        fallback = (
+            AssemblyAITranscriber(api_key=settings.assemblyai_api_key)
+            if settings.assemblyai_api_key
+            else None
+        )
+        self.transcriber = FallbackTranscriber(local=local, fallback=fallback)
 
         self.worker = BackgroundWorker(
             jobs=self.jobs,
