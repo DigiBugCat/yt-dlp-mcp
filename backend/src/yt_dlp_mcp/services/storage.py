@@ -108,17 +108,23 @@ def to_markdown(
         lines.append(result.text or "")
         return "\n".join(lines).strip() + "\n"
 
-    prev = None
+    # Merge consecutive segments from the same speaker into blocks.
+    blocks: list[tuple[str, float, list[str]]] = []
     for segment in result.segments:
-        if prev is not None:
-            gap = segment.start - prev.end
-            speaker_changed = segment.speaker != prev.speaker
-            if gap >= PAUSE_THRESHOLD_SECONDS or speaker_changed:
-                lines.append("")
-        label = segment.speaker or "Speaker"
-        timestamp = _format_timestamp(segment.start)
-        lines.append(f"- [{timestamp}] **{label}**: {segment.text}")
-        prev = segment
+        speaker = segment.speaker or "Speaker"
+        if blocks and blocks[-1][0] == speaker:
+            blocks[-1][2].append(segment.text)
+        else:
+            blocks.append((speaker, segment.start, [segment.text]))
+
+    for i, (speaker, start, texts) in enumerate(blocks):
+        if i > 0:
+            lines.append("")
+        # Capitalize speaker labels like "speaker_0" → "Speaker 0"
+        label = speaker.replace("speaker_", "Speaker ").replace("_", " ")
+        timestamp = _format_timestamp(start)
+        lines.append(f"**{label}** [{timestamp}]")
+        lines.append(" ".join(texts))
 
     return "\n".join(lines).strip() + "\n"
 
