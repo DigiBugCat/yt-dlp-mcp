@@ -118,22 +118,20 @@ async def list_transcripts(
 @mcp.tool(annotations=_ro)
 async def read_transcript(
     video_id: str,
-    format: str = "markdown",
     offset: int = 0,
     limit: int | None = None,
 ) -> dict[str, Any]:
-    """Read a transcript by video ID.
+    """Read a transcript by video ID. Returns speaker-diarized markdown.
 
     Args:
         video_id: The video ID to read
-        format: Output format - "markdown", "text", or "json" (default: "markdown")
-        offset: Number of lines (markdown/text) or segments (json) to skip (default: 0)
-        limit: Max lines/segments to return. None returns all remaining.
+        offset: Number of lines to skip (default: 0)
+        limit: Max lines to return. None returns all remaining.
 
     Returns:
-        Transcript content in the requested format with pagination info.
+        Markdown transcript with speaker labels and timestamps.
     """
-    args: dict[str, Any] = {"video_id": video_id, "format": format, "offset": offset}
+    args: dict[str, Any] = {"video_id": video_id, "offset": offset}
     if limit is not None:
         args["limit"] = limit
 
