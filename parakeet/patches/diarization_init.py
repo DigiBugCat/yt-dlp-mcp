@@ -1,77 +1,81 @@
-from typing import Dict, List, Optional, Tuple, Union
-import os
+from typing import List, Optional
 import logging
-import tempfile
-import numpy as np
+
 import torch
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
+
+_SORTFORMER_MODEL = "nvidia/diar_streaming_sortformer_4spk-v2.1"
+
 
 class SpeakerSegment(BaseModel):
     start: float
     end: float
     speaker: str
 
+
 class DiarizationResult(BaseModel):
     segments: List[SpeakerSegment]
     num_speakers: int
 
+
 class Diarizer:
+    """Speaker diarization using NVIDIA Streaming Sortformer v2.1."""
+
     def __init__(self, access_token: Optional[str] = None):
-        self.pipeline = None
-        self.access_token = access_token
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.model = None
         self._initialize()
 
     def _initialize(self):
         try:
-            from pyannote.audio import Pipeline
+            from nemo.collections.asr.models import SortformerEncLabelModel
 
-            if not self.access_token:
-                self.access_token = os.environ.get("HUGGINGFACE_ACCESS_TOKEN")
+            logger.info("Loading Sortformer model: %s", _SORTFORMER_MODEL)
+            model = SortformerEncLabelModel.from_pretrained(_SORTFORMER_MODEL)
+            model.eval()
 
-            if not self.access_token:
-                logger.error("No access token available. Diarization will not work.")
-                return
+            # Configure streaming — high-latency config is fine for offline batch use,
+            # gives best accuracy with minimal compute.
+            model.sortformer_modules.chunk_len = 340
+            model.sortformer_modules.chunk_right_context = 40
+            model.sortformer_modules.fifo_len = 40
+            model.sortformer_modules.spkcache_update_period = 300
 
-            self.pipeline = Pipeline.from_pretrained(
-                "pyannote/speaker-diarization-3.1",
-                token=self.access_token,
-            )
-            self.pipeline.to(torch.device(self.device))
-            logger.info("Diarization pipeline initialized on %s", self.device)
+            self.model = model
+            logger.info("Sortformer diarization model loaded")
 
-        except ImportError:
-            logger.error("pyannote.audio not installed")
         except Exception as e:
-            logger.error("Failed to initialize diarization pipeline: %s", e)
+            logger.error("Failed to load Sortformer model: %s", e)
 
     def diarize(self, audio_path: str, num_speakers: Optional[int] = None) -> DiarizationResult:
-        if self.pipeline is None:
-            logger.error("Diarization pipeline not initialized")
+        if self.model is None:
+            logger.error("Diarization model not loaded")
             return DiarizationResult(segments=[], num_speakers=0)
 
         try:
-            diarization = self.pipeline(audio_path, num_speakers=num_speakers)
+            predicted_segments = self.model.diarize(
+                audio=[audio_path], batch_size=1
+            )
 
             segments = []
             speakers = set()
 
-            for turn, _, speaker in diarization.itertracks(yield_label=True):
-                if isinstance(speaker, str) and not speaker.startswith("SPEAKER_"):
-                    speaker_id = f"SPEAKER_{speaker}"
-                else:
-                    speaker_id = speaker
-
+            for seg in predicted_segments[0]:
+                # Sortformer returns strings like "0.240 16.240 speaker_0"
+                parts = seg.strip().split()
+                start = float(parts[0])
+                end = float(parts[1])
+                speaker_label = parts[2] if len(parts) > 2 else "speaker_0"
                 segments.append(SpeakerSegment(
-                    start=turn.start,
-                    end=turn.end,
-                    speaker=f"speaker_{speaker_id}",
+                    start=start,
+                    end=end,
+                    speaker=speaker_label,
                 ))
-                speakers.add(speaker_id)
+                speakers.add(speaker_label)
 
             segments.sort(key=lambda x: x.start)
+            logger.info("Sortformer found %d speakers, %d segments", len(speakers), len(segments))
             return DiarizationResult(segments=segments, num_speakers=len(speakers))
 
         except Exception as e:
@@ -96,7 +100,5 @@ class Diarizer:
             if overlapping:
                 overlapping.sort(key=lambda x: x[1], reverse=True)
                 setattr(segment, "speaker", overlapping[0][0])
-            else:
-                setattr(segment, "speaker", "unknown")
 
         return transcription_segments

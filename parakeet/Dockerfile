@@ -20,7 +20,7 @@ RUN pip install --no-cache-dir --break-system-packages \
       torch torchaudio --index-url https://download.pytorch.org/whl/cu128 \
  && pip install --no-cache-dir --break-system-packages \
       nemo_toolkit[asr] fastapi uvicorn python-multipart pydantic \
-      pyannote-audio librosa soundfile pydub
+      librosa soundfile pydub
 
 # Apply patches for pyannote 4.0 + NeMo 2.7 compatibility.
 COPY patches/diarization_init.py /app/diarization/__init__.py
