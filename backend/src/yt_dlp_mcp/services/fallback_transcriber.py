@@ -3,14 +3,14 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from yt_dlp_mcp.services.transcriber import AssemblyAITranscriber, UnsupportedLanguageError
+from yt_dlp_mcp.services.transcriber import AssemblyAITranscriber
 from yt_dlp_mcp.types import TranscriptResult
 
 logger = logging.getLogger(__name__)
 
 
 class FallbackTranscriber:
-    """Tries the local GPU transcriber first, falls back to AssemblyAI for unsupported languages."""
+    """Tries the local Parakeet service first, falls back to AssemblyAI on failure."""
 
     def __init__(
         self,
@@ -24,14 +24,11 @@ class FallbackTranscriber:
     def transcribe(self, audio_path: Path) -> TranscriptResult:
         try:
             return self.local.transcribe(audio_path)
-        except UnsupportedLanguageError as exc:
+        except Exception as exc:
             if self.fallback is None:
-                raise RuntimeError(
-                    f"Detected unsupported language '{exc.language}' "
-                    "but no ASSEMBLYAI_API_KEY configured for fallback"
-                ) from exc
-            logger.info(
-                "Language '%s' not supported by Parakeet, falling back to AssemblyAI",
-                exc.language,
+                raise
+            logger.warning(
+                "Parakeet service failed (%s), falling back to AssemblyAI",
+                exc,
             )
             return self.fallback.transcribe(audio_path)

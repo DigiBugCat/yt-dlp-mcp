@@ -6,6 +6,8 @@ services:
       args:
         YTDLP_CHANNEL: ${YTDLP_CHANNEL:-nightly}
     restart: unless-stopped
+    depends_on:
+      - parakeet
     labels:
       - "com.centurylinklabs.watchtower.scope=yt-dlp-mcp"
     environment:
@@ -17,10 +19,32 @@ services:
       - DATA_DIR=/data
       - DATABASE_PATH=/data/yt_dlp_mcp.sqlite3
       - ASSEMBLYAI_API_KEY=${ASSEMBLYAI_API_KEY}
+      - PARAKEET_URL=http://parakeet:8000
     volumes:
       - yt-dlp-data:/data
     expose:
       - "3000"
+
+  parakeet:
+    build:
+      context: ../parakeet
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    environment:
+      - HUGGINGFACE_ACCESS_TOKEN=${HUGGINGFACE_TOKEN}
+      - ENABLE_DIARIZATION=true
+      - INCLUDE_DIARIZATION_IN_TEXT=false
+      - MODEL_ID=nvidia/parakeet-tdt-0.6b-v3
+    volumes:
+      - parakeet-cache:/root/.cache
+    expose:
+      - "8000"
 
   cloudflared:
     image: cloudflare/cloudflared:latest
@@ -45,3 +69,4 @@ services:
 
 volumes:
   yt-dlp-data:
+  parakeet-cache:

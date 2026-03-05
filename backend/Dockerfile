@@ -1,17 +1,11 @@
-FROM nvidia/cuda:12.6.3-runtime-ubuntu24.04
+FROM python:3.12-slim
 
 ARG YTDLP_CHANNEL=nightly
 ARG DEBIAN_FRONTEND=noninteractive
 
-# System dependencies: Python 3.12, ffmpeg, libsndfile (for audio I/O), curl.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      python3.12 python3.12-venv python3-pip \
-      ffmpeg libsndfile1 curl ca-certificates \
+      ffmpeg curl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
-
-# Make python3.12 the default python/python3.
-RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.12 1 \
- && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1
 
 # Install yt-dlp from channel-specific release artifacts.
 RUN set -eux; \
@@ -30,14 +24,16 @@ RUN set -eux; \
 RUN groupadd -g 1001 app && useradd -u 1001 -g app -s /bin/bash -m app
 
 WORKDIR /app
-COPY pyproject.toml README.md ./
-COPY src ./src
 
-# Install PyTorch with CUDA support, then the rest of the project deps.
-RUN pip install --no-cache-dir --upgrade pip \
- && pip install --no-cache-dir --break-system-packages \
-      torch torchaudio --index-url https://download.pytorch.org/whl/cu126 \
- && pip install --no-cache-dir --break-system-packages .
+# Install deps first (layer cached unless pyproject.toml changes).
+COPY pyproject.toml README.md ./
+RUN mkdir -p src/yt_dlp_mcp && touch src/yt_dlp_mcp/__init__.py \
+ && pip install --no-cache-dir . \
+ && rm -rf src/yt_dlp_mcp
+
+# Copy real source and reinstall (fast, deps already cached).
+COPY src ./src
+RUN pip install --no-cache-dir --no-deps .
 
 RUN mkdir -p /data && chown -R app:app /app /data
 
@@ -50,11 +46,12 @@ ENV PYTHONUNBUFFERED=1 \
     DATABASE_PATH=/data/yt_dlp_mcp.sqlite3 \
     MCP_PATH=/mcp \
     HEALTH_PATH=/healthz \
-    POLL_INTERVAL_SECONDS=5
+    POLL_INTERVAL_SECONDS=5 \
+    PARAKEET_URL=http://parakeet:8000
 
 EXPOSE 3000
 
-HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
   CMD curl -fsS "http://127.0.0.1:${PORT}${HEALTH_PATH}" >/dev/null || exit 1
 
 CMD ["yt-dlp-mcp"]

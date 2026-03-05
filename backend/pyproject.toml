@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "yt-dlp-mcp"
 version = "0.1.0"
-description = "Async FastMCP video transcription service using yt-dlp with local GPU (Parakeet + pyannote) and AssemblyAI fallback"
+description = "Async FastMCP video transcription service using yt-dlp with local GPU (Parakeet + pyannote 4.0) and AssemblyAI fallback"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -13,10 +13,6 @@ dependencies = [
   "httpx>=0.28.0",
   "pydantic>=2.10.0",
   "python-dotenv>=1.0.0",
-  "torch>=2.2.0",
-  "torchaudio>=2.2.0",
-  "nemo_toolkit[asr]>=2.0.0",
-  "pyannote.audio>=3.3.0",
 ]
 
 [project.optional-dependencies]

@@ -17,7 +17,7 @@ class Settings:
     data_dir: Path
     database_path: Path
     assemblyai_api_key: str | None
-    huggingface_token: str | None
+    parakeet_url: str
     max_workers: int
 
 
@@ -41,7 +41,7 @@ def load_settings() -> Settings:
     database_path = Path(os.getenv("DATABASE_PATH", str(data_dir / "yt_dlp_mcp.sqlite3"))).resolve()
 
     assemblyai_api_key = os.getenv("ASSEMBLYAI_API_KEY", "").strip() or None
-    huggingface_token = os.getenv("HUGGINGFACE_TOKEN", "").strip() or None
+    parakeet_url = os.getenv("PARAKEET_URL", "http://parakeet:8000").strip()
 
     return Settings(
         host=os.getenv("HOST", "0.0.0.0"),
@@ -52,6 +52,6 @@ def load_settings() -> Settings:
         data_dir=data_dir,
         database_path=database_path,
         assemblyai_api_key=assemblyai_api_key,
-        huggingface_token=huggingface_token,
+        parakeet_url=parakeet_url,
         max_workers=_as_int("MAX_WORKERS", 3),
     )

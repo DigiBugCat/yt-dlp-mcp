@@ -34,7 +34,7 @@ class AppRuntime:
         self.downloader = Downloader(downloader_root)
         self.storage = StorageService(settings.data_dir)
 
-        local = LocalTranscriber(huggingface_token=settings.huggingface_token)
+        local = LocalTranscriber(parakeet_url=settings.parakeet_url)
         fallback = (
             AssemblyAITranscriber(api_key=settings.assemblyai_api_key)
             if settings.assemblyai_api_key
