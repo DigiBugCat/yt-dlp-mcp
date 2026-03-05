@@ -22,6 +22,10 @@ RUN pip install --no-cache-dir --break-system-packages \
       nemo_toolkit[asr] fastapi uvicorn python-multipart pydantic \
       pyannote-audio librosa soundfile pydub
 
+# Apply patches for pyannote 4.0 + NeMo 2.7 compatibility.
+COPY patches/diarization_init.py /app/diarization/__init__.py
+COPY patches/transcription_fix.py /app/transcription.py
+
 ENV PYTHONUNBUFFERED=1
 
 EXPOSE 8000
