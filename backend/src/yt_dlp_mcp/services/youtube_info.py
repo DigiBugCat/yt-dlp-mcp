@@ -22,13 +22,14 @@ class YouTubeInfoService:
         cmd = [
             "yt-dlp",
             f"ytsearch{limit}:{query}",
+            "--flat-playlist",
             "--print",
             "%(id)s\t%(title)s\t%(uploader)s\t%(duration)s\t%(view_count)s",
             "--no-download",
             "--no-warnings",
             "--quiet",
         ]
-        completed = self._run_ytdlp(cmd, timeout=30)
+        completed = self._run_ytdlp(cmd, timeout=15)
 
         results: list[dict[str, Any]] = []
         for line in completed.stdout.strip().splitlines():
@@ -60,9 +61,10 @@ class YouTubeInfoService:
             "--no-warnings",
             "--no-download",
             "--no-playlist",
+            "--no-check-formats",
             url,
         ]
-        completed = self._run_ytdlp(cmd, timeout=30)
+        completed = self._run_ytdlp(cmd, timeout=15)
         raw = json.loads(completed.stdout)
         return {k: raw[k] for k in self._METADATA_KEYS if k in raw}
 
