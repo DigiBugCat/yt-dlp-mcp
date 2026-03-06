@@ -57,6 +57,21 @@ async def transcribe(url: str) -> dict[str, Any]:
         return _extract_result(result)
 
 
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=False, idempotentHint=True))
+async def transcribe_playlist(url: str) -> dict[str, Any]:
+    """Queue all videos in a playlist for transcription.
+
+    Args:
+        url: Playlist URL (YouTube playlist, channel, etc.)
+
+    Returns:
+        List of enqueued jobs (one per video), with dedup applied per-video.
+    """
+    async with _backend_session() as backend:
+        result = await backend.call_tool("transcribe_playlist", {"url": url})
+        return _extract_result(result)
+
+
 @mcp.tool(annotations=_ro)
 async def job_status(job_id: str) -> dict[str, Any]:
     """Get the status of a transcription job.

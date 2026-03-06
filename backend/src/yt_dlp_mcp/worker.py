@@ -14,7 +14,7 @@ from yt_dlp_mcp.services.transcriber import Transcriber
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_MAX_WORKERS = 3
+DEFAULT_MAX_WORKERS = 10
 
 
 class BackgroundWorker:

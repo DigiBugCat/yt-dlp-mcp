@@ -53,5 +53,5 @@ def load_settings() -> Settings:
         database_path=database_path,
         assemblyai_api_key=assemblyai_api_key,
         parakeet_url=parakeet_url,
-        max_workers=_as_int("MAX_WORKERS", 3),
+        max_workers=_as_int("MAX_WORKERS", 10),
     )

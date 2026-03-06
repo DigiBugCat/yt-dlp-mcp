@@ -68,6 +68,37 @@ class YouTubeInfoService:
         raw = json.loads(completed.stdout)
         return {k: raw[k] for k in self._METADATA_KEYS if k in raw}
 
+    def extract_playlist(self, url: str) -> list[dict[str, Any]]:
+        """Extract video entries from a playlist URL using --flat-playlist."""
+        cmd = [
+            "yt-dlp",
+            "--flat-playlist",
+            "--print",
+            "%(id)s\t%(title)s\t%(uploader)s\t%(duration)s\t%(url)s",
+            "--no-download",
+            "--no-warnings",
+            "--quiet",
+            url,
+        ]
+        completed = self._run_ytdlp(cmd, timeout=30)
+
+        entries: list[dict[str, Any]] = []
+        for line in completed.stdout.strip().splitlines():
+            parts = line.split("\t", 4)
+            if len(parts) < 5:
+                continue
+            video_id, title, uploader, duration, video_url = parts
+            if not video_id or video_id == "NA":
+                continue
+            entries.append({
+                "video_id": video_id,
+                "title": title if title != "NA" else None,
+                "channel": uploader if uploader != "NA" else None,
+                "duration": _safe_int(duration),
+                "url": video_url if video_url != "NA" else f"https://www.youtube.com/watch?v={video_id}",
+            })
+        return entries
+
     def get_comments(
         self, url: str, limit: int = 20, sort: str = "top"
     ) -> list[dict[str, Any]]:

@@ -56,6 +56,73 @@ class ToolRegistry:
                 "deduplicated": False,
             }
 
+        @mcp.tool(annotations=ToolAnnotations(readOnlyHint=False, idempotentHint=True))
+        def transcribe_playlist(url: str) -> dict[str, Any]:
+            """Queue all videos in a playlist for transcription.
+
+            Args:
+                url: Playlist URL (YouTube playlist, channel, etc.)
+
+            Returns:
+                List of enqueued jobs (one per video), with dedup applied per-video.
+            """
+            try:
+                entries = yt_info.extract_playlist(url)
+            except RuntimeError as exc:
+                return {"error": "playlist_extraction_failed", "message": str(exc)}
+
+            if not entries:
+                return {"error": "empty_playlist", "message": "No videos found in playlist"}
+
+            results: list[dict[str, Any]] = []
+            for entry in entries:
+                video_url = entry["url"]
+                normalized = normalize_url(video_url)
+
+                existing = self.transcripts.get_by_normalized_url(normalized)
+                if existing is None:
+                    video_id = extract_youtube_video_id(normalized)
+                    if video_id:
+                        existing = self.transcripts.get_by_video_id(video_id)
+                if existing is not None:
+                    results.append({
+                        "video_url": video_url,
+                        "title": entry.get("title"),
+                        "status": "completed",
+                        "deduplicated": True,
+                        "video_id": existing["video_id"],
+                    })
+                    continue
+
+                active = self.jobs.find_active_by_normalized_url(normalized)
+                if active is not None:
+                    results.append({
+                        "video_url": video_url,
+                        "title": entry.get("title"),
+                        "job_id": active["id"],
+                        "status": active["status"],
+                        "deduplicated": True,
+                    })
+                    continue
+
+                job = self.jobs.enqueue(url=video_url, normalized_url=normalized)
+                results.append({
+                    "video_url": video_url,
+                    "title": entry.get("title"),
+                    "job_id": job["id"],
+                    "status": job["status"],
+                    "deduplicated": False,
+                })
+
+            return {
+                "playlist_url": url,
+                "total_videos": len(entries),
+                "enqueued": sum(1 for r in results if not r.get("deduplicated") and r.get("job_id")),
+                "already_completed": sum(1 for r in results if r.get("status") == "completed" and r.get("deduplicated")),
+                "already_active": sum(1 for r in results if r.get("deduplicated") and r.get("job_id")),
+                "videos": results,
+            }
+
         @mcp.tool(annotations=_ro)
         def job_status(job_id: str) -> dict[str, Any]:
             job = self.jobs.get(job_id)
