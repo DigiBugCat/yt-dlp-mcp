@@ -160,20 +160,14 @@ class ToolRegistry:
             }
 
         @mcp.tool(annotations=_ro)
-        def read_transcript(
-            video_id: str,
-            offset: int = 0,
-            limit: int | None = None,
-        ) -> dict[str, Any]:
-            """Read a transcript by video ID. Returns speaker-diarized markdown.
+        def read_transcript(video_id: str) -> dict[str, Any]:
+            """Read a transcript by video ID. Returns full speaker-diarized markdown.
 
             Args:
                 video_id: The video ID to read
-                offset: Number of lines to skip (default: 0)
-                limit: Max lines to return. None returns all remaining.
 
             Returns:
-                Markdown transcript with speaker labels and timestamps.
+                Full markdown transcript with speaker labels and timestamps.
             """
             transcript = self.transcripts.get_by_video_id(video_id)
             if transcript is None:
@@ -181,16 +175,11 @@ class ToolRegistry:
 
             base = Path(str(transcript["path"]))
             file_path = base / "transcript.md"
-            full = file_path.read_text(encoding="utf-8") if file_path.exists() else ""
-            lines = full.splitlines(keepends=True)
-            total = len(lines)
-            page = lines[offset:] if limit is None else lines[offset:offset + limit]
+            content = file_path.read_text(encoding="utf-8") if file_path.exists() else ""
             return {
                 "video_id": video_id,
-                "content": "".join(page),
-                "total_lines": total,
-                "offset": offset,
-                "lines_returned": len(page),
+                "title": transcript.get("title"),
+                "content": content,
             }
 
         @mcp.tool(annotations=_ro)
